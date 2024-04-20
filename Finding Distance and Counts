@@ -1,0 +1,75 @@
+#include <ESP32Encoder.h>
+#include <ESP32Servo.h>
+
+#define CLK 36  // CLK for Encoder 1
+#define DT 39   // DT for Encoder 1
+#define CLK2 35 // CLK for Encoder 2
+#define DT2 34  // DT for Encoder 2
+
+Servo myservo;            // Create servo object myservo
+int servoPin = 13;   
+
+ESP32Encoder encoder;
+ESP32Encoder encoder2;
+
+const float wheelCircumference = 21.6; // Wheel circumference in cm
+const int encoderCPR = 47;             // Counts per revolution from test
+const float pulsePerCM = wheelCircumference / encoderCPR; // Constant to be multiplied by counts to get distance in cm
+
+void setup()
+{ 
+  Serial.begin(9600);
+
+  encoder.attachHalfQuad(DT, CLK);
+  encoder2.attachHalfQuad(DT2, CLK2);
+  encoder.setCount(0);
+  encoder2.setCount(0);
+
+  ESP32PWM::allocateTimer(2);    // Allocate timer for PWM control of servo (timers 0 and 1 of ESP32 already occupied by pwmChannela and pwmChannelb, respectively)
+  myservo.setPeriodHertz(50);    // Standard 50 hz servo
+  myservo.attach(servoPin, 1000, 2000);
+  myservo.write(0);
+  //myservo.write(180);
+}
+ 
+
+long lastCount1 = 0;
+long lastCount2 = 0;
+
+void loop() 
+{    
+  long count1 = encoder.getCount();
+  long count2 = encoder2.getCount();
+
+  // Check if the counts have changed
+  if (count1 != lastCount1 || count2 != lastCount2) 
+  {
+    // Only update and print if there's a change
+    float distance1 = count1 * pulsePerCM;  // Calculate distance for encoder 1 by multiplying count1 by pulsePerCM
+    float distance2 = count2 * pulsePerCM;  // Calculate distance for encoder 2 by multiplying count2 by pulsePerCM
+    float averageDistance = (distance1 + distance2) / 2.0;  // Take the average of both distances
+
+    Serial.print("Encoder 1 Count: ");
+    Serial.print(count1);
+    Serial.print(", Distance: ");
+    Serial.print(distance1);
+    Serial.println(" cm");
+
+    Serial.print("Encoder 2 Count: ");
+    Serial.print(count2);
+    Serial.print(", Distance: ");
+    Serial.print(distance2);
+    Serial.println(" cm");
+
+    Serial.print("Average Distance: ");
+    Serial.print(averageDistance);
+    Serial.println(" cm");
+  }
+
+  // Update last counts
+  lastCount1 = count1;
+  lastCount2 = count2;
+
+  // Short pause for stability
+  delay(50);
+}
